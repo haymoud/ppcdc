@@ -138,11 +138,23 @@
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
+        .back-link {
+            display: inline-block;
+            margin-bottom: 20px;
+            color: #7f8c8d;
+            text-decoration: none;
+            font-size: 14px;
+        }
+        .back-link:hover { 
+            color: var(--primary-color); 
+            text-decoration: underline; 
+        }
     </style>
 </head>
 <body>
 
 <div class="card">
+    <a href="/" class="back-link">← Retour au portail principal</a>
     <div class="header">
         <h1>Générateur de Balance Comptable</h1>
         <p>Importez votre Livre Journal (.xls ou .xlsx) pour générer automatiquement la balance finale formatée.</p>
@@ -158,7 +170,7 @@
         {% endwith %}
     </div>
 
-    <form action="/process" method="POST" enctype="multipart/form-data" onsubmit="showLoader()">
+    <form action="/balance/process" method="POST" enctype="multipart/form-data" onsubmit="showLoader()">
         <div class="upload-box">
             <label for="file" style="display:block; margin-bottom: 15px; font-weight: bold; color: var(--primary-color);">
                 Sélectionnez le fichier du Livre Journal :
