@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Application Bourse | Conversion & Vérification</title>
+    <style>
+        :root {
+            --primary-color: #2980b9; /* Bourse Blue */
+            --secondary-color: #f39c12; /* Action Orange */
+            --bg-color: #F4F7F6;
+            --text-color: #333333;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            min-height: 100vh;
+            margin: 0;
+            padding: 40px 20px;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 800px;
+            display: flex;
+            flex-direction: column;
+            gap: 30px;
+        }
+
+        .card {
+            background-color: #ffffff;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+            border-top: 5px solid var(--primary-color);
+        }
+
+        .header {
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .header h1 {
+            color: var(--primary-color);
+            font-size: 22px;
+            margin: 0 0 5px 0;
+        }
+
+        .header p {
+            color: #7f8c8d;
+            font-size: 14px;
+            margin: 0;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+            color: #34495e;
+            font-size: 14px;
+        }
+
+        input[type="file"] {
+            display: block;
+            width: 100%;
+            padding: 10px;
+            border: 1px dashed #bdc3c7;
+            border-radius: 4px;
+            background-color: #fafbfc;
+            cursor: pointer;
+        }
+
+        .btn-submit {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            font-size: 15px;
+            font-weight: bold;
+            border-radius: 4px;
+            cursor: pointer;
+            width: 100%;
+            transition: background-color 0.3s;
+        }
+
+        .btn-submit.compare-btn {
+            background-color: var(--secondary-color);
+        }
+
+        .btn-submit:hover {
+            opacity: 0.9;
+        }
+
+        .flash-messages {
+            margin-bottom: 20px;
+        }
+
+        .alert {
+            padding: 12px;
+            border-radius: 4px;
+            font-size: 14px;
+            margin-bottom: 10px;
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .back-link {
+            display: inline-block;
+            margin-bottom: 20px;
+            color: #7f8c8d;
+            text-decoration: none;
+            font-size: 14px;
+        }
+        .back-link:hover { color: var(--primary-color); text-decoration: underline; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <a href="/" class="back-link">← Retour au portail principal</a>
+
+    <div class="flash-messages">
+        {% with messages = get_flashed_messages() %}
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="alert">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+    </div>
+
+    <div class="card">
+        <div class="header">
+            <h1>1. Convertisseur COBOL vers Excel</h1>
+            <p>Extrait les numéros de compte, NNI et montants nets depuis le fichier texte.</p>
+        </div>
+        <form action="/bourse/convert" method="POST" enctype="multipart/form-data">
+            <div class="form-group">
+                <label for="cobol_file">Fichier Source (Texte / COBOL) :</label>
+                <input type="file" name="file" id="cobol_file" required>
+            </div>
+            <button type="submit" class="btn-submit">Extraire et Télécharger (Excel)</button>
+        </form>
+    </div>
+
+    <div class="card" style="border-top-color: var(--secondary-color);">
+        <div class="header">
+            <h1 style="color: var(--secondary-color);">2. Moteur de Comparaison Bourse</h1>
+            <p>Compare deux fichiers Excel basés sur le NNI pour identifier les écarts de montants (Net).</p>
+        </div>
+        <form action="/bourse/compare" method="POST" enctype="multipart/form-data">
+            <div class="form-group">
+                <label for="file1">Fichier Excel A (Ex: Référence) :</label>
+                <input type="file" name="file1" id="file1" accept=".xls, .xlsx" required>
+            </div>
+            <div class="form-group">
+                <label for="file2">Fichier Excel B (Ex: Données à vérifier) :</label>
+                <input type="file" name="file2" id="file2" accept=".xls, .xlsx" required>
+            </div>
+            <button type="submit" class="btn-submit compare-btn">Lancer la Comparaison</button>
+        </form>
+    </div>
+
+</div>
+
+</body>
+</html>

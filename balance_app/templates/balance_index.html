@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Génération de Balance | Trésor Public</title>
+    <style>
+        :root {
+            --primary-color: #2C3E50; /* Dark corporate blue */
+            --secondary-color: #18BC9C; /* Success green */
+            --bg-color: #F4F7F6;
+            --text-color: #333333;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+
+        .card {
+            background-color: #ffffff;
+            padding: 40px;
+            border-radius: 10px;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            max-width: 550px;
+            text-align: center;
+        }
+
+        .header {
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            color: var(--primary-color);
+            font-size: 24px;
+            margin: 0 0 10px 0;
+        }
+
+        .header p {
+            color: #7f8c8d;
+            font-size: 14px;
+            margin: 0;
+        }
+
+        .upload-box {
+            border: 2px dashed #bdc3c7;
+            padding: 40px 20px;
+            border-radius: 8px;
+            background-color: #fafbfc;
+            margin-bottom: 25px;
+            transition: border-color 0.3s;
+        }
+
+        .upload-box:hover {
+            border-color: var(--primary-color);
+        }
+
+        input[type="file"] {
+            font-size: 14px;
+            color: #555;
+            cursor: pointer;
+        }
+
+        input[type="file"]::file-selector-button {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-right: 15px;
+            transition: background-color 0.3s;
+        }
+
+        input[type="file"]::file-selector-button:hover {
+            background-color: #1a252f;
+        }
+
+        .btn-submit {
+            background-color: var(--secondary-color);
+            color: white;
+            border: none;
+            padding: 14px 28px;
+            font-size: 16px;
+            font-weight: bold;
+            border-radius: 6px;
+            cursor: pointer;
+            width: 100%;
+            transition: background-color 0.3s;
+        }
+
+        .btn-submit:hover {
+            background-color: #128f76;
+        }
+
+        .flash-messages {
+            margin-bottom: 20px;
+            text-align: left;
+        }
+
+        .alert {
+            padding: 12px;
+            border-radius: 4px;
+            font-size: 14px;
+            margin-bottom: 10px;
+        }
+
+        .alert-error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        /* Loading Spinner */
+        #loader {
+            display: none;
+            margin-top: 20px;
+        }
+        
+        .spinner {
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            border-left-color: var(--primary-color);
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <div class="header">
+        <h1>Générateur de Balance Comptable</h1>
+        <p>Importez votre Livre Journal (.xls ou .xlsx) pour générer automatiquement la balance finale formatée.</p>
+    </div>
+
+    <div class="flash-messages">
+        {% with messages = get_flashed_messages() %}
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="alert alert-error">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+    </div>
+
+    <form action="/process" method="POST" enctype="multipart/form-data" onsubmit="showLoader()">
+        <div class="upload-box">
+            <label for="file" style="display:block; margin-bottom: 15px; font-weight: bold; color: var(--primary-color);">
+                Sélectionnez le fichier du Livre Journal :
+            </label>
+            <input type="file" name="file" id="file" accept=".xls, .xlsx" required>
+        </div>
+        
+        <button type="submit" class="btn-submit" id="submit-btn">Générer la Balance Excel</button>
+    </form>
+
+    <div id="loader">
+        <div class="spinner"></div>
+        <p style="color: #7f8c8d; font-size: 14px; margin-top: 10px;">Traitement des opérations en cours...</p>
+    </div>
+</div>
+
+<script>
+    function showLoader() {
+        document.getElementById('submit-btn').style.display = 'none';
+        document.getElementById('loader').style.display = 'block';
+    }
+</script>
+
+</body>
+</html>
