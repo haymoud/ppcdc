@@ -2,6 +2,7 @@ from flask import Blueprint, render_template, request, send_file, flash, redirec
 import pandas as pd
 import re
 from io import BytesIO
+from difflib import SequenceMatcher
 
 # Création du Blueprint 'bourse'
 bourse_bp = Blueprint('bourse', __name__, template_folder='templates')
@@ -81,6 +82,9 @@ def standardize(df, label):
 
     df["NNI"] = df["NNI"].astype(str).str.replace(" ", "").str.zfill(10)
     df[f"Net_{label}"] = pd.to_numeric(df[f"Net_{label}"], errors="coerce").fillna(0)
+    
+    # S'assurer que les noms sont bien traités comme du texte et non des NaN
+    df[f"Name_{label}"] = df[f"Name_{label}"].fillna("").astype(str)
 
     return df.groupby("NNI").agg({
         f"Name_{label}": "first",
@@ -140,19 +144,59 @@ def compare():
         df1 = standardize(df1, "A")
         df2 = standardize(df2, "B")
 
-        merged = pd.merge(df1, df2, on="NNI", how="outer").fillna(0)
+        # Fusion (Outer Join)
+        merged = pd.merge(df1, df2, on="NNI", how="outer")
+        
+        # Nettoyage des valeurs nulles après la fusion
+        merged["Net_A"] = merged["Net_A"].fillna(0)
+        merged["Net_B"] = merged["Net_B"].fillna(0)
+        merged["Name_A"] = merged["Name_A"].fillna("")
+        merged["Name_B"] = merged["Name_B"].fillna("")
+
         merged["Difference"] = merged["Net_A"] - merged["Net_B"]
 
+        # --- NOUVELLE LOGIQUE DE COMPARAISON DES NOMS ---
+        def calculate_similarity(name1, name2):
+            if not name1 or not name2:
+                return 0.0
+            
+            # Nettoyage : majuscules et retrait des espaces multiples
+            n1_clean = " ".join(str(name1).upper().split())
+            n2_clean = " ".join(str(name2).upper().split())
+            
+            if not n1_clean or not n2_clean:
+                return 0.0
+                
+            # Calcul du ratio de correspondance des lettres (entre 0.0 et 1.0)
+            return SequenceMatcher(None, n1_clean, n2_clean).ratio()
+
+        # Application du calcul
+        merged["Ratio"] = merged.apply(lambda r: calculate_similarity(r["Name_A"], r["Name_B"]), axis=1)
+        
+        # Colonne Vrai (True) si >= 60%, Faux (False) sinon
+        merged["Validation_Nom (>=60%)"] = merged["Ratio"] >= 0.60
+        
+        # Transformation du ratio en pourcentage lisible pour Excel
+        merged["Score_Similarite"] = (merged["Ratio"] * 100).round(1).astype(str) + "%"
+
+        # Observations financières
         def obs(r):
-            if r["Difference"] == 0:
-                return "Match"
             if r["Net_A"] == 0:
                 return "Missing A"
             if r["Net_B"] == 0:
                 return "Missing B"
+            if r["Difference"] == 0:
+                return "Match"
             return "Mismatch"
 
         merged["Observation"] = merged.apply(obs, axis=1)
+
+        # Réorganisation des colonnes pour un rendu propre dans Excel
+        colonnes_finales = [
+            "NNI", "Name_A", "Name_B", "Validation_Nom (>=60%)", "Score_Similarite",
+            "Net_A", "Net_B", "Difference", "Observation"
+        ]
+        merged = merged[colonnes_finales]
 
         output = BytesIO()
         merged.to_excel(output, index=False)
