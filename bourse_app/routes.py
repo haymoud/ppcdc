@@ -64,7 +64,6 @@ def parse_cobol(file_bytes):
 
     return pd.DataFrame(out)
 
-
 # =========================
 # 2. COMPARISON ENGINE
 # =========================
@@ -77,20 +76,33 @@ def standardize(df, label):
     except IndexError:
         raise ValueError("Les colonnes requises (NNI, NOM/NAME, NET) sont introuvables.")
 
-    df = df[[nni, name, net]].copy()
-    df.columns = ["NNI", f"Name_{label}", f"Net_{label}"]
+    # Trouver la colonne du pays dynamiquement
+    try:
+        pays = [c for c in df.columns if "PAYS" in str(c).upper() or "COUNTRY" in str(c).upper()][0]
+    except IndexError:
+        raise ValueError(f"La colonne Pays (contenant 'PAYS' ou 'COUNTRY') est introuvable dans le fichier {label}.")
 
+    # Isoler les colonnes nécessaires
+    df = df[[nni, name, pays, net]].copy()
+    df.columns = ["NNI", f"Name_{label}", f"Pays_{label}", f"Net_{label}"]
+
+    # Nettoyage des données
     df["NNI"] = df["NNI"].astype(str).str.replace(" ", "").str.zfill(10)
     df[f"Net_{label}"] = pd.to_numeric(df[f"Net_{label}"], errors="coerce").fillna(0)
     
-    # S'assurer que les noms sont bien traités comme du texte et non des NaN
+    # S'assurer que le nom et le pays sont des chaînes de caractères propres
     df[f"Name_{label}"] = df[f"Name_{label}"].fillna("").astype(str)
+    
+    # Nettoyage strict pour le pays : on met tout en majuscules et on enlève les espaces inutiles 
+    # pour que "Mauritanie" == " MAURITANIE "
+    df[f"Pays_{label}"] = df[f"Pays_{label}"].fillna("").astype(str).str.strip().str.upper()
 
+    # Agrégation (On garde le premier nom et premier pays trouvé pour chaque NNI)
     return df.groupby("NNI").agg({
         f"Name_{label}": "first",
+        f"Pays_{label}": "first",
         f"Net_{label}": "sum"
     }).reset_index()
-
 
 # =========================
 # ROUTES DU BLUEPRINT
@@ -141,6 +153,7 @@ def compare():
         df1 = pd.read_excel(f1)
         df2 = pd.read_excel(f2)
 
+        # Standardisation (incluant maintenant le Pays)
         df1 = standardize(df1, "A")
         df2 = standardize(df2, "B")
 
@@ -152,32 +165,31 @@ def compare():
         merged["Net_B"] = merged["Net_B"].fillna(0)
         merged["Name_A"] = merged["Name_A"].fillna("")
         merged["Name_B"] = merged["Name_B"].fillna("")
+        merged["Pays_A"] = merged["Pays_A"].fillna("")
+        merged["Pays_B"] = merged["Pays_B"].fillna("")
 
         merged["Difference"] = merged["Net_A"] - merged["Net_B"]
 
-        # --- NOUVELLE LOGIQUE DE COMPARAISON DES NOMS ---
+        # --- VALIDATION DES NOMS (Similarité) ---
         def calculate_similarity(name1, name2):
             if not name1 or not name2:
                 return 0.0
-            
-            # Nettoyage : majuscules et retrait des espaces multiples
             n1_clean = " ".join(str(name1).upper().split())
             n2_clean = " ".join(str(name2).upper().split())
-            
             if not n1_clean or not n2_clean:
                 return 0.0
-                
-            # Calcul du ratio de correspondance des lettres (entre 0.0 et 1.0)
+            from difflib import SequenceMatcher
             return SequenceMatcher(None, n1_clean, n2_clean).ratio()
 
-        # Application du calcul
         merged["Ratio"] = merged.apply(lambda r: calculate_similarity(r["Name_A"], r["Name_B"]), axis=1)
-        
-        # Colonne Vrai (True) si >= 60%, Faux (False) sinon
         merged["Validation_Nom (>=60%)"] = merged["Ratio"] >= 0.60
-        
-        # Transformation du ratio en pourcentage lisible pour Excel
         merged["Score_Similarite"] = (merged["Ratio"] * 100).round(1).astype(str) + "%"
+
+        # --- VALIDATION DES PAYS (Match Exact) ---
+        # Retourne True si les deux pays sont identiques (et non vides)
+        merged["Validation_Pays"] = merged.apply(
+            lambda r: (r["Pays_A"] == r["Pays_B"]) and (r["Pays_A"] != ""), axis=1
+        )
 
         # Observations financières
         def obs(r):
@@ -194,6 +206,7 @@ def compare():
         # Réorganisation des colonnes pour un rendu propre dans Excel
         colonnes_finales = [
             "NNI", "Name_A", "Name_B", "Validation_Nom (>=60%)", "Score_Similarite",
+            "Pays_A", "Pays_B", "Validation_Pays",
             "Net_A", "Net_B", "Difference", "Observation"
         ]
         merged = merged[colonnes_finales]
@@ -202,7 +215,7 @@ def compare():
         merged.to_excel(output, index=False)
         output.seek(0)
 
-        return send_file(output, as_attachment=True, download_name="comparaison_bourse.xlsx")
+        return send_file(output, as_attachment=True, download_name="comparaison_bourse_et_pays.xlsx")
     
     except ValueError as ve:
         flash(str(ve))
